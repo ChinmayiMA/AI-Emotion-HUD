@@ -1,7 +1,151 @@
-const video=document.getElementById("video"),canvas=document.getElementById("canvas"),startBtn=document.getElementById("startBtn"),analyzeBtn=document.getElementById("analyzeBtn"),cameraMessage=document.getElementById("cameraMessage"),statusText=document.getElementById("statusText"),analysisState=document.getElementById("analysisState"),fps=document.getElementById("fps"),dominantEmotion=document.getElementById("dominantEmotion"),dominantConfidence=document.getElementById("dominantConfidence"),dominantLabel=document.getElementById("dominantLabel"),confidenceBar=document.getElementById("confidenceBar"),emotionList=document.getElementById("emotionList");
-const EMOTIONS=["angry","happy","sad","surprise","neutral"],API_URL="http://127.0.0.1:5000/analyze";let stream=null,analyzing=false,lastRequest=0;
-function buildRows(){emotionList.innerHTML=EMOTIONS.map(e=>`<div class="emotion-row" id="row-${e}"><span class="emotion-name">${e}</span><div class="bar-bg"><div class="bar-fill" id="bar-${e}"></div></div><span class="score" id="score-${e}">0%</span></div>`).join("")}
-function updateUI(data){const emotions=data.emotions||{},top=data.dominant_emotion||"neutral",confidence=Number(data.confidence||0);EMOTIONS.forEach(e=>{const v=Math.max(0,Math.min(100,Number(emotions[e]||0)));document.getElementById(`bar-${e}`).style.width=`${v}%`;document.getElementById(`score-${e}`).textContent=`${v.toFixed(0)}%`;document.getElementById(`row-${e}`).classList.toggle("active",e===top)});dominantEmotion.textContent=top.toUpperCase();dominantConfidence.textContent=`${confidence.toFixed(0)}%`;dominantLabel.textContent=`${top.toUpperCase()} · ${confidence.toFixed(0)}%`;confidenceBar.style.width=`${confidence}%`}
-async function startCamera(){try{stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:"user"},audio:false});video.srcObject=stream;cameraMessage.classList.add("hidden");startBtn.disabled=true;analyzeBtn.disabled=false;statusText.textContent="CAMERA ONLINE";fps.textContent="CAMERA ONLINE"}catch(e){statusText.textContent="CAMERA DENIED";alert("Camera access was not granted. Please allow camera permission and try again.")}}
-async function analyzeFrame(){if(!stream||analyzing)return;const now=Date.now();if(now-lastRequest<650)return;lastRequest=now;analyzing=true;analysisState.textContent="ANALYZING";try{const width=640,height=Math.round(width*(video.videoHeight/video.videoWidth||.5625));canvas.width=width;canvas.height=height;canvas.getContext("2d").drawImage(video,0,0,width,height);const image=canvas.toDataURL("image/jpeg",.75),response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({image})});if(!response.ok)throw new Error("Backend unavailable");updateUI(await response.json());statusText.textContent="AI ANALYSIS ACTIVE";analysisState.textContent="LIVE"}catch(e){statusText.textContent="BACKEND OFFLINE";analysisState.textContent="START PYTHON SERVER"}finally{analyzing=false}}
-startBtn.addEventListener("click",startCamera);analyzeBtn.addEventListener("click",analyzeFrame);buildRows();updateUI({emotions:{},dominant_emotion:"neutral",confidence:0});setInterval(analyzeFrame,700);window.addEventListener("beforeunload",()=>{if(stream)stream.getTracks().forEach(t=>t.stop())});
+const API_URL = "http://127.0.0.1:5000";
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const startButton = document.getElementById("startButton");
+const statusElement = document.getElementById("status");
+const emotionElement = document.getElementById("emotion");
+const confidenceElement = document.getElementById("confidence");
+const confidenceBar = document.getElementById("confidenceBar");
+const scoresElement = document.getElementById("scores");
+const messageElement = document.getElementById("message");
+
+let cameraStream = null;
+let analyzing = false;
+let timer = null;
+
+function setStatus(text, online) {
+    statusElement.textContent = text;
+    statusElement.className = online
+        ? "status online"
+        : "status offline";
+}
+
+async function checkBackend() {
+    try {
+        const response = await fetch(`${API_URL}/api/health`);
+        if (!response.ok) {
+            throw new Error("Backend unavailable");
+        }
+
+        setStatus("Backend online", true);
+    } catch (error) {
+        setStatus("Backend offline", false);
+        messageElement.textContent =
+            "Start Flask first, then refresh this page.";
+    }
+}
+
+async function startCamera() {
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: "user"
+            },
+            audio: false
+        });
+
+        video.srcObject = cameraStream;
+        startButton.textContent = "Camera Running";
+        startButton.disabled = true;
+
+        messageElement.textContent =
+            "Camera active. Analyzing your expression...";
+
+        captureFrame();
+    } catch (error) {
+        console.error(error);
+        messageElement.textContent =
+            "Camera permission was denied or no camera was found.";
+    }
+}
+
+function captureFrame() {
+    if (!video.videoWidth || !video.videoHeight) {
+        timer = setTimeout(captureFrame, 1000);
+        return;
+    }
+
+    canvas.width = 480;
+    canvas.height = Math.round(
+        video.videoHeight * (canvas.width / video.videoWidth)
+    );
+
+    const context = canvas.getContext("2d");
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const image = canvas.toDataURL("image/jpeg", 0.75);
+
+    analyzeImage(image);
+
+    timer = setTimeout(captureFrame, 1500);
+}
+
+async function analyzeImage(image) {
+    if (analyzing) {
+        return;
+    }
+
+    analyzing = true;
+
+    try {
+        const response = await fetch(`${API_URL}/api/analyze`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ image })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || "Analysis failed");
+        }
+
+        updateEmotion(data);
+        setStatus("Backend online", true);
+    } catch (error) {
+        console.error(error);
+        setStatus("Analysis error", false);
+        messageElement.textContent =
+            "The backend could not analyze this frame.";
+    } finally {
+        analyzing = false;
+    }
+}
+
+function updateEmotion(data) {
+    const emotion = data.emotion || "unknown";
+    const confidence = Number(data.confidence || 0);
+
+    emotionElement.textContent = emotion.toUpperCase();
+    confidenceElement.textContent = `${confidence.toFixed(1)}%`;
+    confidenceBar.style.width = `${Math.min(confidence, 100)}%`;
+
+    scoresElement.innerHTML = "";
+
+    const emotions = data.emotions || {};
+    const sortedScores = Object.entries(emotions)
+        .sort((a, b) => b[1] - a[1]);
+
+    for (const [name, score] of sortedScores) {
+        const row = document.createElement("div");
+        row.className = "score-row";
+
+        row.innerHTML = `
+            <span>${name}</span>
+            <span>${Number(score).toFixed(1)}%</span>
+        `;
+
+        scoresElement.appendChild(row);
+    }
+
+    messageElement.textContent =
+        "Analysis updated successfully.";
+}
+
+startButton.addEventListener("click", startCamera);
+checkBackend();
