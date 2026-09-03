@@ -1,59 +1,61 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Emotion HUD</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Emotion HUD</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="scanlines"></div>
-<header class="topbar">
-  <div class="brand"><span class="dot"></span>AI EMOTION HUD</div>
-  <div class="status"><span class="status-dot"></span><span id="statusText">SYSTEM READY</span></div>
-</header>
+    <main class="app">
+        <header>
+            <div>
+                <p class="eyebrow">REAL-TIME FACIAL ANALYSIS</p>
+                <h1>AI Emotion HUD</h1>
+            </div>
 
-<main class="dashboard">
-  <section class="camera-panel">
-    <div class="panel-title"><span>LIVE VISION</span><span id="fps">CAMERA OFFLINE</span></div>
-    <div class="camera-frame">
-      <video id="video" autoplay playsinline muted></video>
-      <canvas id="canvas" hidden></canvas>
-      <div class="hud-corners"></div>
-      <div class="scan-line"></div>
-      <div class="face-reticle">
-        <span class="corner tl"></span><span class="corner tr"></span>
-        <span class="corner bl"></span><span class="corner br"></span>
-        <div class="reticle-label" id="dominantLabel">NEUTRAL · 0%</div>
-      </div>
-      <div class="camera-message" id="cameraMessage">
-        <div class="camera-icon">◉</div>
-        <p>Camera access required</p>
-        <button id="startBtn" class="primary-btn">START CAMERA</button>
-      </div>
-      <div class="camera-meta"><span>MODEL: DEEPFACE</span><span id="analysisState">WAITING</span></div>
-    </div>
-  </section>
+            <span id="status" class="status offline">
+                Backend offline
+            </span>
+        </header>
 
-  <aside class="side-panel">
-    <div class="panel-title">EMOTION MATRIX</div>
-    <div id="emotionList" class="emotion-list"></div>
-    <div class="dominant-card">
-      <span class="mini-label">DOMINANT EMOTION</span>
-      <strong id="dominantEmotion">NEUTRAL</strong>
-      <div class="confidence"><span id="dominantConfidence">0%</span><div><i id="confidenceBar"></i></div></div>
-    </div>
-    <button id="analyzeBtn" class="secondary-btn" disabled>AI ANALYSIS READY</button>
-  </aside>
+        <section class="dashboard">
+            <div class="camera-panel">
+                <video id="video" autoplay muted playsinline></video>
+                <canvas id="canvas"></canvas>
 
-  <section class="info-grid">
-    <article><span class="mini-label">ENGINE</span><h3>DeepFace</h3><p>Facial-expression analysis powered by a Python AI backend.</p></article>
-    <article><span class="mini-label">VISION</span><h3>Browser Camera</h3><p>Live video is captured locally and selected frames are analyzed.</p></article>
-    <article><span class="mini-label">STACK</span><h3>HTML · CSS · JS · Python</h3><p>A simple architecture for learning, demos and GitHub projects.</p></article>
-  </section>
-</main>
+                <div class="scan-line"></div>
+                <div class="camera-label">CAMERA FEED</div>
 
-<footer><span>AI EMOTION HUD</span><span>© 2026 · Educational/demo use</span></footer>
-<script src="script.js"></script>
+                <button id="startButton">
+                    Start Camera
+                </button>
+            </div>
+
+            <aside class="data-panel">
+                <p class="label">DOMINANT EMOTION</p>
+                <h2 id="emotion">Waiting...</h2>
+
+                <p class="label">CONFIDENCE</p>
+                <div class="confidence-row">
+                    <span id="confidence">0%</span>
+                    <div class="bar">
+                        <div id="confidenceBar"></div>
+                    </div>
+                </div>
+
+                <p class="label">EMOTION SCORES</p>
+                <div id="scores" class="scores">
+                    <p>Start the camera to begin.</p>
+                </div>
+
+                <p id="message" class="message">
+                    Click “Start Camera” and allow camera access.
+                </p>
+            </aside>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
 </body>
 </html>
