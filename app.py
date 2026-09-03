@@ -1,55 +1,98 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from deepface import DeepFace
 import base64
+import os
+
 import cv2
 import numpy as np
+from flask import Flask, jsonify, request, send_from_directory
+from flask_cors import CORS
+from deepface import DeepFace
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+app = Flask(__name__, static_folder=BASE_DIR, static_url_path="")
 CORS(app)
-EMOTIONS = ["angry", "happy", "sad", "surprise", "neutral"]
 
-def decode_image(data_url):
-    if "," in data_url:
-        data_url = data_url.split(",", 1)[1]
-    raw = base64.b64decode(data_url)
-    image = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
-    if image is None:
-        raise ValueError("Could not decode image")
-    return image
 
 @app.get("/")
 def home():
-    return jsonify({"status":"online","service":"AI Emotion HUD","endpoint":"/analyze"})
+    return send_from_directory(BASE_DIR, "index.html")
 
-@app.post("/analyze")
+
+@app.get("/api/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "message": "Emotion backend is running"
+    })
+
+
+@app.post("/api/analyze")
 def analyze():
     try:
-        payload = request.get_json(silent=True) or {}
-        image_data = payload.get("image")
-        if not image_data:
-            return jsonify({"error":"No image supplied"}), 400
+        data = request.get_json(silent=True)
 
-        frame = decode_image(image_data)
+        if not data or "image" not in data:
+            return jsonify({
+                "error": "Missing image field"
+            }), 400
+
+        image_data = data["image"]
+
+        if "," in image_data:
+            image_data = image_data.split(",", 1)[1]
+
+        image_bytes = base64.b64decode(image_data)
+        image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return jsonify({
+                "error": "Invalid image data"
+            }), 400
+
         result = DeepFace.analyze(
             img_path=frame,
             actions=["emotion"],
+            detector_backend="opencv",
             enforce_detection=False,
-            detector_backend="opencv"
+            silent=True
         )
-        face_result = result[0] if isinstance(result, list) else result
-        raw = face_result.get("emotion", {})
-        emotions = {e: round(float(raw.get(e, 0.0)), 2) for e in EMOTIONS}
-        dominant = max(EMOTIONS, key=lambda e: emotions[e])
+
+        if isinstance(result, list):
+            result = result[0]
+
+        emotions = result.get("emotion", {})
+        dominant_emotion = result.get("dominant_emotion", "unknown")
+
+        confidence = 0
+
+        if emotions:
+            confidence = float(emotions.get(dominant_emotion, 0))
 
         return jsonify({
-            "emotions": emotions,
-            "dominant_emotion": dominant,
-            "confidence": emotions[dominant]
+            "success": True,
+            "emotion": dominant_emotion,
+            "confidence": round(confidence, 2),
+            "emotions": {
+                key: round(float(value), 2)
+                for key, value in emotions.items()
+            }
         })
-    except Exception as exc:
-        return jsonify({"error":"Emotion analysis failed","details":str(exc)}), 500
+
+    except Exception as error:
+        print("Analysis error:", repr(error))
+
+        return jsonify({
+            "success": False,
+            "error": str(error)
+        }), 500
+
 
 if __name__ == "__main__":
-    print("AI Emotion HUD backend running at http://127.0.0.1:5000")
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    print("Starting AI Emotion HUD backend...")
+    print("Open http://127.0.0.1:5000 in your browser")
+    app.run(
+        host="127.0.0.1",
+        port=5000,
+        debug=True
+    )
