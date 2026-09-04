@@ -17,7 +17,6 @@ The project combines a lightweight web interface with a Python backend powered b
   * Happy
   * Sad
   * Angry
-  * Fear
   * Surprise
   * Neutral
 * 📊 Displays the detected emotion and confidence
@@ -153,7 +152,6 @@ Open the application in your browser and allow **camera access** when prompted.
 | 😊 Happy    | Positive facial expression         |
 | 😢 Sad      | Sadness-related expression         |
 | 😠 Angry    | Anger-related expression           |
-| 😨 Fear     | Fear or anxiety-related expression |
 | 😲 Surprise | Unexpected or surprised expression |
 | 😐 Neutral  | No strong emotional expression     |
 
