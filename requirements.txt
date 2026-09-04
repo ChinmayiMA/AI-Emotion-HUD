@@ -1,6 +1,7 @@
-Flask>=3.0,<4
-flask-cors>=4.0,<7
-deepface>=0.0.93
-opencv-python>=4.8
-numpy>=1.24
-tf-keras>=2.15
+Flask==3.0.3
+flask-cors==4.0.1
+deepface==0.0.93
+opencv-python==4.10.0.84
+numpy==1.26.4
+tensorflow==2.15.1
+tf-keras==2.15.1
