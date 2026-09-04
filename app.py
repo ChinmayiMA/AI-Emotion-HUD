@@ -48,7 +48,11 @@ def analyze():
             "confidence": emotions[dominant]
         })
     except Exception as exc:
-        return jsonify({"error":"Emotion analysis failed","details":str(exc)}), 500
+        print(" DEEPFACE ERROR:", repr(exc))
+        return jsonify({
+            "error": "Emotion analysis failed",
+            "details": str(exc)
+        }), 500
 
 if __name__ == "__main__":
     print("AI Emotion HUD backend running at http://127.0.0.1:5000")
